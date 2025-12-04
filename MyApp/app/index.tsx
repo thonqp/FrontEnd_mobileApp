@@ -16,13 +16,13 @@ export default function Index() {
   
   // 1. Nếu CHƯA hoàn thành Onboarding, chuyển đến màn hình Onboarding
   if (!hasOnboarded) {
-      return <Redirect href="/screens/onboardingScreen" />;
+      return <Redirect href="/auth/onboarding" />;
   }
   
   // 2. Nếu ĐÃ hoàn thành Onboarding, kiểm tra trạng thái Đăng nhập
   return isLoggedIn ? (
     <Redirect href="/(tabs)/home" /> // Đã đăng nhập, chuyển đến Home
   ) : (
-    <Redirect href="/screens/loginScreen" /> // Chưa đăng nhập, chuyển đến Login
+    <Redirect href="/auth/login" /> // Chưa đăng nhập, chuyển đến Login
   );
 }
