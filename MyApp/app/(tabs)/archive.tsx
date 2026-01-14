@@ -17,7 +17,7 @@ import FolderListItem from '../components/FolderListItem';
 import { useAuth } from '../context/AuthContext';
 import { useFocusEffect } from 'expo-router';
 
-// ✅ Import Legacy cho SDK 54+
+// ✅ Import Legacy cho SDK 54+ (Nếu dùng SDK mới nhất)
 import * as FileSystem from 'expo-file-system/legacy';
 
 import * as Sharing from 'expo-sharing';
@@ -45,6 +45,24 @@ interface ArchiveItem {
   fileName?: string;
 }
 
+// --- CONFIG HỖ TRỢ FILE ---
+// Các đuôi file mà OS (Android/iOS) thường hỗ trợ xem trực tiếp
+const SUPPORTED_EXTENSIONS = [
+  'pdf', 
+  'doc', 'docx', 
+  'jpg', 'jpeg', 'png', 'heic',
+  'txt',
+  'ppt', 'pptx', // Powerpoint
+  'xls', 'xlsx'  // Excel
+];
+
+// Hàm kiểm tra xem file có được hỗ trợ không
+const isSupportedFile = (filename: string | null | undefined): boolean => {
+  if (!filename) return false;
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return extension ? SUPPORTED_EXTENSIONS.includes(extension) : false;
+};
+
 // --- HELPER FUNCTIONS ---
 const formatFileSize = (size: number) => {
   if (!size) return 'Unknown';
@@ -63,13 +81,12 @@ const getFileColor = (filenameOrType: string) => {
   return '#000080';
 };
 
-// ✅ THÊM HÀM: Lấy MIME Type chuẩn cho Android
 const getMimeType = (url: string) => {
   const ext = url.split('.').pop()?.toLowerCase();
   switch (ext) {
     case 'pdf': return 'application/pdf';
     case 'doc':
-    case 'docx': return 'application/msword'; // Hoặc application/vnd.openxmlformats-officedocument.wordprocessingml.document
+    case 'docx': return 'application/msword';
     case 'xls':
     case 'xlsx': return 'application/vnd.ms-excel';
     case 'ppt':
@@ -78,10 +95,11 @@ const getMimeType = (url: string) => {
     case 'jpg':
     case 'jpeg': return 'image/jpeg';
     case 'txt': return 'text/plain';
-    default: return '*/*'; // Mặc định nếu không nhận dạng được
+    default: return '*/*';
   }
 };
 
+// --- COMPONENT CHÍNH ---
 export default function ArchiveScreen() {
   const { user } = useAuth();
   
@@ -94,6 +112,7 @@ export default function ArchiveScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // Tự động load lại dữ liệu mỗi khi vào Tab
   useFocusEffect(
     useCallback(() => {
       if (activeTab === 'Tài liệu của tôi') {
@@ -111,16 +130,22 @@ export default function ArchiveScreen() {
       
       const docDir = FileSystem.documentDirectory;
       if (!docDir) {
-        console.warn('Thiết bị không hỗ trợ lưu trữ local (documentDirectory null)');
+        console.warn('Thiết bị không hỗ trợ lưu trữ local');
         return;
       }
 
+      // Đọc tất cả file trong thư mục Document
       const files = await FileSystem.readDirectoryAsync(docDir);
       
       const items: ArchiveItem[] = [];
       
       for (const file of files) {
+        // Bỏ qua file hệ thống hoặc ẩn
         if (file.startsWith('.')) continue;
+
+        // --- QUAN TRỌNG: Lọc file không hỗ trợ ---
+        if (!isSupportedFile(file)) continue; 
+        // ----------------------------------------
 
         const fileUri = docDir + file;
         const info = await FileSystem.getInfoAsync(fileUri);
@@ -159,6 +184,7 @@ export default function ArchiveScreen() {
         const documents: BackendDocument[] = result.data;
         const mappedData: ArchiveItem[] = documents.map((doc) => {
           let fileName = doc.title;
+          // Xử lý tên file hiển thị nếu thiếu đuôi
           if (!fileName.includes('.')) {
              if (doc.fileType.includes('pdf')) fileName += '.pdf';
              else if (doc.fileType.includes('image')) fileName += '.png';
@@ -193,37 +219,31 @@ export default function ArchiveScreen() {
   const openFileWithOS = async (fileUri: string) => {
     try {
       if (Platform.OS === 'android') {
-        // Lấy Content URI (bắt buộc cho Android 7+)
         const cUri = await FileSystem.getContentUriAsync(fileUri);
-        
-        // ✅ QUAN TRỌNG: Lấy MIME Type để Android biết mở bằng app nào
         const mimeType = getMimeType(fileUri);
-
         await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
           data: cUri,
-          flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
-          type: mimeType, // ✅ Phải có dòng này thì mới mở được app đọc PDF/Word
+          flags: 1,
+          type: mimeType,
         });
       } else {
-        // iOS tự động nhận diện tốt hơn
         await Sharing.shareAsync(fileUri);
       }
     } catch (e) {
       console.error("Không thể mở file:", e);
-      Alert.alert(
-        'Không thể mở file', 
-        'Thiết bị của bạn có thể chưa cài ứng dụng hỗ trợ định dạng này.'
-      );
+      Alert.alert('Không thể mở file', 'Thiết bị chưa cài ứng dụng hỗ trợ định dạng này.');
     }
   };
 
   // --- 4. XỬ LÝ KHI BẤM VÀO ITEM ---
   const handleItemPress = async (item: ArchiveItem) => {
+    // TH1: File trong máy -> Mở luôn
     if (activeTab === 'Tài liệu của tôi' && item.localUri) {
       await openFileWithOS(item.localUri);
       return;
     }
 
+    // TH2: File trên mạng -> Tải về rồi mở
     if (activeTab === 'Tài liệu đã chia sẻ' && item.fileUrl && item.fileName) {
       const docDir = FileSystem.documentDirectory;
       if (!docDir) {
@@ -237,15 +257,15 @@ export default function ArchiveScreen() {
         const fileInfo = await FileSystem.getInfoAsync(localUri);
 
         if (fileInfo.exists) {
+          // File đã có sẵn -> Mở luôn
           await openFileWithOS(localUri);
         } else {
+          // Chưa có -> Tải về
           setIsDownloading(true);
-          
           const downloadRes = await FileSystem.downloadAsync(
             item.fileUrl,
             localUri
           );
-
           setIsDownloading(false);
           
           if (downloadRes.status === 200) {
@@ -257,6 +277,7 @@ export default function ArchiveScreen() {
                 { text: 'Mở ngay', onPress: () => openFileWithOS(localUri) }
               ]
             );
+            // Refresh lại list local nếu đang cần thiết (nhưng ở đây đang ở tab chia sẻ)
           } else {
             Alert.alert('Lỗi', 'Tải file thất bại.');
           }
