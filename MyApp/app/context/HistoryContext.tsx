@@ -16,6 +16,7 @@ export interface RecentItemType {
 interface HistoryContextType {
   recentItems: RecentItemType[];
   addToHistory: (item: Omit<RecentItemType, 'time'>) => void;
+  clearHistory: () => void;
 }
 
 const HistoryContext = createContext<HistoryContextType | undefined>(undefined);
@@ -61,8 +62,13 @@ export const HistoryProvider = ({ children }: { children: ReactNode }) => {
     await AsyncStorage.setItem('user_history', JSON.stringify(updatedList));
   };
 
+  const clearHistory = async () => {
+    setRecentItems([]);
+    await AsyncStorage.removeItem('user_history');
+  };
+
   return (
-    <HistoryContext.Provider value={{ recentItems, addToHistory }}>
+    <HistoryContext.Provider value={{ recentItems, addToHistory, clearHistory }}>
       {children}
     </HistoryContext.Provider>
   );

@@ -41,7 +41,18 @@ const HomeScreen: FC = () => {
     // 2. LẤY THÔNG TIN USER TỪ CONTEXT
     const { user } = useAuth();
     const router = useRouter();
-    const { recentItems } = useHistory();
+    const { recentItems, clearHistory } = useHistory();
+
+    const handleClearHistory = () => {
+        Alert.alert(
+            "Xóa lịch sử",
+            "Xóa danh sách xem gần đây?",
+            [
+                { text: "Hủy", style: "cancel" },
+                { text: "Xóa", style: "destructive", onPress: clearHistory }
+            ]
+        );
+    };
 
     const handleViewItem = (item: RecentItemType) => {
         if (item.fileUri) {
@@ -106,8 +117,11 @@ const HomeScreen: FC = () => {
             {/* 3. Recents Header */}
             <View style={styles.recentsHeader}>
                 <Text style={styles.recentsTitle}>Gần đây</Text>
-                <TouchableOpacity onPress={() => Alert.alert('View All', 'Mở trang danh sách tất cả')}>
+                {/* <TouchableOpacity onPress={() => Alert.alert('View All', 'Mở trang danh sách tất cả')}>
                     <Text style={styles.viewAllText}>Xem tất cả</Text>
+                </TouchableOpacity> */}
+                <TouchableOpacity onPress={handleClearHistory}>
+                    <Text style={{color: '#FF3B30', fontSize: 14}}>Xóa lịch sử</Text>
                 </TouchableOpacity>
             </View>
 

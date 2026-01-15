@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   Alert,
   ScrollView,
+  Platform
 } from 'react-native';
 // Sử dụng Ionicons cho các icon Cài đặt và Đăng xuất nếu chưa có SVG
 import { Ionicons, Feather } from '@expo/vector-icons'; 
@@ -186,6 +187,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    paddingTop: Platform.OS === 'android' ? 50 : 10,
   },
   
   // Header Style

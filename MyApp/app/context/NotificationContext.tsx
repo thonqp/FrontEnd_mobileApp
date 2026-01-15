@@ -19,6 +19,7 @@ interface NotificationContextType {
   notifications: NotificationItemType[];
   addNotification: (item: Omit<NotificationItemType, 'id' | 'time' | 'isRead'>) => void;
   markAsRead: (id: string) => void;
+  clearNotifications: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -67,8 +68,13 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     await AsyncStorage.setItem('user_notifications', JSON.stringify(updatedList));
   };
 
+  const clearNotifications = async () => {
+    setNotifications([]); // Xóa state
+    await AsyncStorage.removeItem('user_notifications'); // Xóa bộ nhớ
+  };
+
   return (
-    <NotificationContext.Provider value={{ notifications, addNotification, markAsRead }}>
+    <NotificationContext.Provider value={{ notifications, addNotification, markAsRead, clearNotifications }}>
       {children}
     </NotificationContext.Provider>
   );

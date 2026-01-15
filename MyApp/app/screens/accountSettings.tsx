@@ -214,7 +214,7 @@ export default function AccountSettingsScreen() {
                 newPassword: newPass
             });
 
-            Alert.alert("Thành công", "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
+            Alert.alert("Thành công", "Đổi mật khẩu thành công!");
             setPassModalVisible(false);
             
             // Tùy chọn: Logout người dùng để họ đăng nhập lại với pass mới
